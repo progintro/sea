@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   // Base path - change this if deploying to a subdirectory
   base: './',
-  
+
   build: {
     outDir: 'dist',
     // Ensure assets are in a predictable location
@@ -21,12 +21,12 @@ export default defineConfig({
     // Required for top-level await
     target: 'esnext',
   },
-  
+
   plugins: [
     // WASM support
     wasm(),
     topLevelAwait(),
-    
+
     // Copy coi-serviceworker.js and wasmer WASM from node_modules
     viteStaticCopy({
       targets: [

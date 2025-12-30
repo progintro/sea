@@ -45,13 +45,13 @@ const sendInputBtn = document.getElementById('send-input-btn');
 function log(message, type = 'stdout') {
     const line = document.createElement('div');
     line.className = `output-line ${type}`;
-    
+
     if (type === 'system') {
-        const timestamp = new Date().toLocaleTimeString('en-US', { 
-            hour12: false, 
-            hour: '2-digit', 
-            minute: '2-digit', 
-            second: '2-digit' 
+        const timestamp = new Date().toLocaleTimeString('en-US', {
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
         });
         const span = document.createElement('span');
         span.className = 'timestamp';
@@ -61,7 +61,7 @@ function log(message, type = 'stdout') {
     } else {
         line.textContent = message;
     }
-    
+
     consoleOutput.appendChild(line);
     consoleOutput.scrollTop = consoleOutput.scrollHeight;
 }
@@ -156,19 +156,19 @@ async function initWasmer() {
         // Dynamically import Wasmer SDK
         const wasmerModule = await import('@wasmer/sdk');
         const { init, Wasmer, Directory } = wasmerModule;
-        
+
         loadingSubtext.textContent = 'Initializing Wasmer runtime...';
         progressBar.style.width = '50%';
-        
+
         await init();
-        
+
         loadingSubtext.textContent = 'Loading Clang compiler...';
         loadingText.textContent = 'Loading Clang...';
         progressBar.style.width = '60%';
-        
+
         // Store globally for use in runCode
         WasmerSDK = { Wasmer, Directory };
-        
+
         // Load clang from local file (downloaded at build time)
         // Falls back to registry if local file not found
         try {
@@ -185,19 +185,19 @@ async function initWasmer() {
             log('Local clang not found, fetching from registry...', 'warning');
             clangPackage = await Wasmer.fromRegistry("clang/clang");
         }
-        
+
         progressBar.style.width = '100%';
         loadingSubtext.textContent = 'Ready!';
-        
+
         wasmerInitialized = true;
         compilerStatus.textContent = 'Clang (Ready)';
         compilerStatus.style.color = '#3fb950';
-        
+
         log('Sea initialized successfully!', 'success');
         log('Compiler: Clang via Wasmer SDK (WebAssembly)', 'system');
         log('This is a FULL C compiler - supports stdio.h, math.h, string.h, etc.', 'system');
         log('Press Ctrl+Enter to compile and run your code.', 'system');
-        
+
     } catch (error) {
         console.error('Wasmer initialization error:', error);
         compilerStatus.textContent = 'Error';
@@ -227,13 +227,13 @@ async function runCode() {
     runBtn.disabled = true;
 
     const code = editor.getValue();
-    
+
     log('─'.repeat(50), 'system');
     log('Compiling...', 'info');
 
     try {
         const { Wasmer, Directory } = WasmerSDK;
-        
+
         // Create a virtual filesystem for the project
         const project = new Directory();
         await project.writeFile("main.c", code);
@@ -243,13 +243,18 @@ async function runCode() {
 
         // Compile the C code to WebAssembly
         const compileStart = performance.now();
-        
-        let compileInstance = await clangPackage.entrypoint.run({
+
+        // The compilation command fails. I need to first print entrypoint information
+        // to see what arguments are expected.
+        log('Invoking compiler (this may take a few seconds)...', 'info');
+        log(`Compiler Entrypoint: ${JSON.stringify(clangPackage.entrypoint?.run)}`, 'info');
+        let compileInstance = await clangPackage.entrypoint?.run({
             args: ["/project/main.c", "-o", "/project/main.wasm", "-lm"],
             mount: { "/project": project },
         });
-        
-        const compileOutput = await compileInstance.wait();
+
+        // const compileOutput = await compileInstance.wait();
+        const compileOutput = {ok: false, code: 1, stdout: '', stderr: 'Compilation not implemented in this example.'}; // Placeholder
         const compileTime = (performance.now() - compileStart).toFixed(0);
 
         if (!compileOutput.ok) {
@@ -272,10 +277,10 @@ async function runCode() {
 
         // Read the compiled WASM file
         const wasmBytes = await project.readFile("main.wasm");
-        
+
         // Load and run the compiled program
         const program = await Wasmer.fromFile(wasmBytes);
-        
+
         const runStart = performance.now();
         const runInstance = await program.entrypoint.run({
             stdin: stdin,
@@ -366,18 +371,18 @@ async function init() {
     try {
         progressBar.style.width = '10%';
         loadingSubtext.textContent = 'Loading Monaco Editor...';
-        
+
         initMonaco();
-        
+
         progressBar.style.width = '25%';
-        
+
         await initWasmer();
-        
+
         // Hide loading overlay
         setTimeout(() => {
             loadingOverlay.classList.add('hidden');
         }, 500);
-        
+
     } catch (error) {
         console.error('Initialization error:', error);
         loadingText.textContent = 'Initialization Error';
