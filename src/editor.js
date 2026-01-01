@@ -3,6 +3,31 @@ import * as monaco from 'monaco-editor';
 import { EXAMPLES } from './examples.js';
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 
+// Helper to get ?code param from URL
+function getCodeFromQuery() {
+    const params = new URLSearchParams(window.location.search);
+    const codeParam = params.get('code');
+    if (!codeParam) return null;
+    try {
+        // decodeURIComponent in case of URL encoding
+        return atob(decodeURIComponent(codeParam));
+    } catch (e) {
+        return null;
+    }
+}
+
+// Helper to set ?code param in URL (without reloading)
+function setCodeInQuery(code) {
+    const params = new URLSearchParams(window.location.search);
+    if (code) {
+        params.set('code', encodeURIComponent(btoa(code)));
+    } else {
+        params.delete('code');
+    }
+    const newUrl = window.location.pathname + '?' + params.toString();
+    window.history.replaceState({}, '', newUrl);
+}
+
 let editor = null;
 
 // Configure Monaco workers for Vite - required to run compiler / other jobs in workers
@@ -12,6 +37,7 @@ self.MonacoEnvironment = {
         return new editorWorker();
     }
 };
+
 
 export function initMonaco(runCode, clearConsole) {
     monaco.editor.defineTheme('sea-dark', {
@@ -42,8 +68,11 @@ export function initMonaco(runCode, clearConsole) {
         }
     });
 
+    // Use code from ?code param if present, else default
+    const initialCode = getCodeFromQuery() ?? EXAMPLES.hello;
+
     editor = monaco.editor.create(document.getElementById('editor-container'), {
-        value: EXAMPLES.hello,
+        value: initialCode,
         language: 'c',
         theme: 'sea-dark',
         fontSize: 14,
@@ -61,6 +90,11 @@ export function initMonaco(runCode, clearConsole) {
         cursorSmoothCaretAnimation: 'on',
         smoothScrolling: true,
         padding: { top: 12, bottom: 12 },
+    });
+
+    // Update ?code param on every change
+    editor.onDidChangeModelContent(() => {
+        setCodeInQuery(editor.getValue());
     });
 
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {

@@ -34,21 +34,8 @@ class InBrowserEnvironment {
         return await responsePromise;
     }
 
-    async compileToAssembly(options) {
-        return this.runAsync('compileToAssembly', options);
-    }
-
-    async compileTo6502(options) {
-        return this.runAsync('compileTo6502', options);
-    }
-
     compileLinkRun(contents) {
         this.port.postMessage({ id: 'compileLinkRun', data: contents });
-    }
-
-    postCanvas(offscreenCanvas) {
-        this.port.postMessage({ id: 'postCanvas', data: offscreenCanvas },
-            [offscreenCanvas]);
     }
 
     onmessage(event) {
