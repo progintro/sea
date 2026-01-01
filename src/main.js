@@ -2,8 +2,7 @@
 import './style.css';
 import { EXAMPLES } from './examples.js';
 import { initMonaco, getEditor } from './editor.js';
-import { initCompiler } from './compiler.js';
-import { runCode as runCompileAndRun } from './compileRun.js';
+import { initCompiler, runCode as runCompileAndRun } from './compileRun.js';
 
 // ============================================
 // DOM ELEMENTS

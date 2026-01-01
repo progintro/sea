@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
 import { join } from 'path';
 
 const BASE_URL = 'https://binji.github.io/wasm-clang';
-const PUBLIC_DIR = 'public/wasm-clang';
+const PUBLIC_DIR = 'public/';
 
 const ASSETS = [
     'clang',           // clang compiler (wasm)
@@ -13,7 +13,6 @@ const ASSETS = [
     'memfs',           // in-memory filesystem (wasm)
     'sysroot.tar',     // C/C++ headers and libraries
     'shared.js',       // shared utilities
-    'shared_web.js',   // shared utilities for web
     'worker.js',       // web worker for compilation
 ];
 

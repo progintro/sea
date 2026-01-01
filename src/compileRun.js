@@ -1,6 +1,87 @@
 // Compile and run logic for Sea
 import { getEditor } from './editor.js';
 
+class InBrowserEnvironment {
+
+    constructor(terminal) {
+        this.nextResponseId = 0;
+        this.responseCBs = new Map();
+        this.worker = new Worker('worker.js');
+        const channel = new MessageChannel();
+        this.port = channel.port1;
+        this.port.onmessage = this.onmessage.bind(this);
+
+        const remotePort = channel.port2;
+        this.worker.postMessage({ id: 'constructor', data: remotePort },
+            [remotePort]);
+        this.terminal = terminal;
+    }
+
+    setShowTiming(value) {
+        this.port.postMessage({ id: 'setShowTiming', data: value });
+    }
+
+    terminate() {
+        this.worker.terminate();
+    }
+
+    async runAsync(id, options) {
+        const responseId = this.nextResponseId++;
+        const responsePromise = new Promise((resolve, reject) => {
+            this.responseCBs.set(responseId, { resolve, reject });
+        });
+        this.port.postMessage({ id, responseId, data: options });
+        return await responsePromise;
+    }
+
+    async compileToAssembly(options) {
+        return this.runAsync('compileToAssembly', options);
+    }
+
+    async compileTo6502(options) {
+        return this.runAsync('compileTo6502', options);
+    }
+
+    compileLinkRun(contents) {
+        this.port.postMessage({ id: 'compileLinkRun', data: contents });
+    }
+
+    postCanvas(offscreenCanvas) {
+        this.port.postMessage({ id: 'postCanvas', data: offscreenCanvas },
+            [offscreenCanvas]);
+    }
+
+    onmessage(event) {
+        switch (event.data.id) {
+            case 'write':
+                this.terminal(event.data.data, 'stdout');
+                break;
+
+            case 'runAsync': {
+                const responseId = event.data.responseId;
+                const promise = this.responseCBs.get(responseId);
+                if (promise) {
+                    this.responseCBs.delete(responseId);
+                    promise.resolve(event.data.data);
+                }
+                break;
+            }
+        }
+    }
+}
+
+let env = null;
+
+export async function initCompiler(log, setStatus, progressBar, loadingText, loadingSubtext, compilerStatus) {
+    if (env) return;
+    loadingSubtext.textContent = 'Loading wasm-clang compiler...';
+    progressBar.style.width = '30%';
+    loadingText.textContent = 'Setting up clang';
+    env = new InBrowserEnvironment(log);
+    compilerStatus.textContent = 'Clang (Ready)';
+    compilerStatus.style.color = '#3fb950';
+    return;
+}
 
 export async function runCode(log, setStatus, runBtn, stdinInput) {
     runBtn.disabled = true;
@@ -9,26 +90,8 @@ export async function runCode(log, setStatus, runBtn, stdinInput) {
     const code = editor.getValue();
     log('─'.repeat(50), 'system');
     log('Compiling...', 'info');
-    class MyWorkerAPI extends WorkerAPI {
-        constructor() {
-            super();
-        }
-
-        onmessage(event) {
-            switch (event.data.id) {
-            case 'write':
-                console.log(event);
-                log(event.data.data, 'stdout');
-                break;
-
-            default:
-                super.onmessage(event);
-            }
-        }
-    }
-    const api = new MyWorkerAPI();
     try {
-        let result = await api.compileLinkRun(code);
+        let result = await env.compileLinkRun(code);
         console.log(result);
         log('Program output:', 'info');
         log('─'.repeat(50), 'system');
@@ -36,52 +99,6 @@ export async function runCode(log, setStatus, runBtn, stdinInput) {
         log('─'.repeat(50), 'system');
         log(`Program finished execution`, 'success');
         setStatus('ready');
-
-        // const { Wasmer, Directory } = getWasmerSDK();
-        // const clangPackage = getClangPackage();
-        // const project = new Directory();
-        // await project.writeFile("/main.c", code);
-        // const stdin = stdinInput.value || '';
-        // const compileStart = performance.now();
-        // log('Invoking compiler (this may take a few seconds)...', 'info');
-        // let compileInstance = await clangPackage.entrypoint.run({
-        //     args: ["/project/main.c", "-o", "/project/main.wasm"],
-        //     mount: { "/project": project },
-        // });
-        // const compileOutput = await compileInstance.wait();
-        // const compileTime = (performance.now() - compileStart).toFixed(0);
-        // if (!compileOutput.ok) {
-        //     log(`Compilation failed (exit code: ${compileOutput.code})`, 'stderr');
-        //     if (compileOutput.stderr) {
-        //         log(compileOutput.stderr, 'stderr');
-        //     }
-        //     setStatus('error');
-        //     runBtn.disabled = false;
-        //     return;
-        // }
-        // if (compileOutput.stderr) {
-        //     log('Compiler warnings:', 'warning');
-        //     log(compileOutput.stderr, 'warning');
-        // }
-        // log(`Compiled successfully in ${compileTime}ms`, 'success');
-        // log('Running program...', 'info');
-        // log('─'.repeat(50), 'system');
-        // const wasmBytes = await project.readFile("main.wasm");
-        // const program = await Wasmer.fromFile(wasmBytes);
-        // const runStart = performance.now();
-        // const runInstance = await program.entrypoint.run({ stdin });
-        // const result = await runInstance.wait();
-        // const runTime = (performance.now() - runStart).toFixed(0);
-        // if (result.stdout) log(result.stdout, 'stdout');
-        // if (result.stderr) log(result.stderr, 'stderr');
-        // log('─'.repeat(50), 'system');
-        // if (result.ok) {
-        //     log(`Program exited with code ${result.code} (${runTime}ms)`, 'success');
-        //     setStatus('ready');
-        // } else {
-        //     log(`Program exited with code ${result.code}`, 'warning');
-        //     setStatus('error');
-        // }
     } catch (error) {
         log(`Error: ${error.message}`, 'stderr');
         setStatus('error');
