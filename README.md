@@ -1,109 +1,69 @@
-# Sea — In-Browser C Compiler: What you sea is what you get!
+# Sea — In-Browser C Compiler
 
-A fully-featured C code editor and compiler that runs entirely in your browser. Uses Monaco Editor and Clang compiled to WebAssembly via [binji/wasm-clang](https://github.com/binji/wasm-clang).
+> C code editor & compiler running fully in your browser. Powered by Monaco Editor and Clang (via [binji/wasm-clang](https://github.com/binji/wasm-clang)).
 
 ## Quick Start
 
 ```bash
-# Install dependencies and download clang (~30MB, one-time)
-npm run setup
-
-# Development server (with hot reload)
-npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
+npm run setup    # Install deps & download clang (~30MB, one-time)
+npm run dev      # Start dev server
+npm run build    # Build for production
+npm run preview  # Preview production build
 ```
 
-## Setup Details
+## Build & Deploy
 
-The `npm run setup` command:
-1. Installs npm dependencies
-2. Downloads the Clang compiler package (~30MB) to `public/`
+`dist/` contains the static site after `npm run build`. Upload it to any static host (GitHub Pages, Netlify, Vercel, etc).
 
-The clang package is downloaded once and cached locally. This avoids CORS issues and makes the app work offline.
+For best performance, set these headers:
 
-## Building for Production
-
-```bash
-npm run build
-```
-
-This creates a `dist/` folder containing:
-- `index.html`
-- `assets/` (bundled JS/CSS)
-
-Upload the entire `dist/` folder to any static host.
-
-## Deployment
-
-### GitHub Pages / Netlify / Vercel
-Just upload the `dist/` folder.
-
-### Traditional Web Server
-For best performance, configure your server to send these headers:
 ```
 Cross-Origin-Opener-Policy: same-origin
 Cross-Origin-Embedder-Policy: require-corp
 ```
 
-If you can't set headers, the included service worker will handle it (with a page reload on first visit).
+If you can't set headers, the service worker will polyfill (may require reload).
 
 ## Dependencies
 
-All dependencies are managed via npm and bundled at build time:
+All dependencies are managed via npm:
 
-| Package | Purpose |
-|---------|---------|
-| `monaco-editor` | VS Code-quality code editor |
-| `vite` | Fast build tool and dev server |
+| Package         | Purpose                  |
+|-----------------|--------------------------|
+| monaco-editor   | Code editor (VS Code UI) |
+| vite            | Build tool & dev server  |
 
 ## Updating Dependencies
 
+## Update Deps
+
 ```bash
-# Check for updates
-npm outdated
-
-# Update all dependencies
-npm update
-
-# Or update specific package
-npm install monaco-editor@latest
-```
-
-Then rebuild:
-```bash
-npm run build
+npm outdated      # Check for updates
+npm update        # Update all
+npm install <pkg> # Update specific
+npm run build     # Rebuild
 ```
 
 ## Features
 
-- **Full C Compiler**: Real Clang compiler, not an interpreter
-- **Standard Library**: stdio.h, stdlib.h, string.h etc.
-- **Monaco Editor**: Syntax highlighting, auto-indent, keyboard shortcuts
-- **8 Example Programs**: Learn C with built-in examples
-- **Stdin Support**: Provide input to your programs
-- **No Backend**: Everything runs in your browser
+- Real Clang compiler (not an interpreter)
+- Standard C library (stdio.h, etc)
+- Monaco Editor (syntax, shortcuts)
+- Example programs included
+- Stdin support
+- 100% client-side
 
 ## How It Works
 
-1. Your C code is written to a virtual filesystem
-2. Clang (compiled to WASM) compiles it to WebAssembly
-3. The resulting WASM is executed within your browser
-4. Output is displayed in the console
+1. C code is written to a virtual FS
+2. Clang (WASM) compiles to WebAssembly
+3. Output runs in-browser
 
-## First Load
+On first load, Clang (~30MB) is downloaded & cached.
 
-On first load, the browser downloads the Clang compiler (~30MB). This is cached by the browser for subsequent visits.
+## Requirements
 
-## Browser Requirements
-
-- Modern browser with WebAssembly support
-- SharedArrayBuffer support (enabled via service worker)
-- Chrome, Firefox, Edge, Safari all supported
+- Modern browser (WebAssembly, SharedArrayBuffer)
 
 ## License
 
