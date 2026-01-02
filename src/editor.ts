@@ -2,6 +2,7 @@
 import * as monaco from 'monaco-editor';
 import { EXAMPLES } from './examples.js';
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
+import { calculateColumns } from './utils.js';
 
 // Helper to get ?code param from URL
 function getCodeFromQuery(): string | null {
@@ -84,13 +85,14 @@ export function initMonaco(runCode: () => void, clearConsole: () => void): void 
         return 14;
     };
 
-    // Responsive word wrap column based on screen width
-    const getWordWrapColumn = (): number => {
-        const width = window.innerWidth;
-        if (width <= 375) return 40;
-        if (width <= 480) return 50;
-        if (width <= 768) return 55;
-        return 80;
+    // Calculate word wrap column based on actual editor container width
+    const calculateWordWrapColumn = (): number => {
+        const fontSize = getFontSize();
+        return calculateColumns(
+            editorContainer,
+            "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+            `${fontSize}px`
+        );
     };
 
     editor = monaco.editor.create(editorContainer, {
@@ -106,7 +108,7 @@ export function initMonaco(runCode: () => void, clearConsole: () => void): void 
         tabSize: 4,
         insertSpaces: true,
         wordWrap: 'wordWrapColumn',
-        wordWrapColumn: getWordWrapColumn(),
+        wordWrapColumn: calculateWordWrapColumn(),
         lineNumbers: 'on',
         renderLineHighlight: 'line',
         cursorBlinking: 'smooth',
@@ -115,13 +117,24 @@ export function initMonaco(runCode: () => void, clearConsole: () => void): void 
         padding: { top: 12, bottom: 12 },
     });
 
-    // Update font size on window resize
-    const updateFontSize = () => {
+    // Update font size and word wrap column on window resize
+    const updateEditorOptions = () => {
         if (editor) {
-            editor.updateOptions({ fontSize: getFontSize() });
+            editor.updateOptions({ 
+                fontSize: getFontSize(),
+                wordWrapColumn: calculateWordWrapColumn()
+            });
         }
     };
-    window.addEventListener('resize', updateFontSize);
+    
+    // Use ResizeObserver for more accurate container size tracking
+    const resizeObserver = new ResizeObserver(() => {
+        updateEditorOptions();
+    });
+    resizeObserver.observe(editorContainer);
+    
+    // Also listen to window resize as fallback
+    window.addEventListener('resize', updateEditorOptions);
 
     // Update ?code param on every change
     editor.onDidChangeModelContent(() => {

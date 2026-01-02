@@ -5,6 +5,7 @@ import { initMonaco, getEditor } from './editor.js';
 import { initCompiler, runCode } from './env.js';
 import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
+import { calculateColumns } from './utils.js';
 
 // ============================================
 // DOM ELEMENTS
@@ -49,13 +50,9 @@ const elements: Elements = {
     sendInputBtn: $('send-input-btn') as HTMLButtonElement
 };
 
-// Responsive cols based on screen width
-const getCols = (): number => {
-    const width = window.innerWidth;
-    if (width <= 375) return 40;
-    if (width <= 480) return 48;
-    if (width <= 768) return 60;
-    return 80;
+// Calculate columns based on actual container width
+const calculateCols = (): number => {
+    return calculateColumns(elements.consoleOutput);
 };
 
 // Initialize xterm.js terminal
@@ -66,11 +63,27 @@ const term = new Terminal({
         cursor: '#58a6ff',
     },
     rows: 48,
-    cols: getCols(),
+    cols: calculateCols(),
     convertEol: true,
     scrollback: 10000,
 });
 term.open(elements.consoleOutput);
+
+// Resize terminal when window or container size changes
+const resizeTerminal = (): void => {
+    const cols = calculateCols();
+    const rows = term.rows || 48;
+    term.resize(cols, rows);
+};
+
+// Use ResizeObserver for more accurate container size tracking
+const resizeObserver = new ResizeObserver(() => {
+    resizeTerminal();
+});
+resizeObserver.observe(elements.consoleOutput);
+
+// Also listen to window resize as fallback
+window.addEventListener('resize', resizeTerminal);
 
 let isRunning = false;
 
